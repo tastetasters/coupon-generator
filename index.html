@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿠폰 이미지 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f3; color: #111; min-height: 100vh; }
+
+  header { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 1rem 2rem; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  header span { font-size: 13px; color: #888; }
+
+  .container { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; }
+  @media (max-width: 750px) { .container { grid-template-columns: 1fr; } }
+
+  .card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.5rem; }
+  .card + .card { margin-top: 1rem; }
+  .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem; }
+
+  .field { margin-bottom: 1.1rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+  .field input[type="text"] { width: 100%; font-size: 14px; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; outline: none; transition: border 0.15s; }
+  .field input[type="text"]:focus { border-color: #999; }
+
+  .upload-box { border: 1.5px dashed #d8d8d8; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: #999; position: relative; transition: all 0.15s; background: #fafafa; }
+  .upload-box:hover { border-color: #aaa; background: #f5f5f5; }
+  .upload-box input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-box img { max-height: 60px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .upload-box .icon { font-size: 22px; margin-bottom: 4px; }
+
+  .codes-area { width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; height: 130px; resize: vertical; font-family: 'Courier New', monospace; outline: none; line-height: 1.7; }
+  .codes-area:focus { border-color: #999; }
+
+  .or-sep { text-align: center; font-size: 12px; color: #bbb; margin: 10px 0; position: relative; }
+  .or-sep::before, .or-sep::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: #eee; }
+  .or-sep::before { left: 0; } .or-sep::after { right: 0; }
+
+  .code-count { font-size: 12px; color: #888; margin-top: 6px; }
+
+  .gen-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border: none; border-radius: 10px; background: #111; color: #fff; cursor: pointer; margin-top: 1.25rem; transition: all 0.15s; letter-spacing: -0.2px; }
+  .gen-btn:hover { background: #333; }
+  .gen-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .sticky-right { position: sticky; top: 1.5rem; }
+  .preview-canvas-wrap { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
+  .preview-canvas-wrap canvas { width: 100%; display: block; }
+  .refresh-btn { width: 100%; margin-top: 10px; padding: 9px; font-size: 13px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #555; cursor: pointer; }
+  .refresh-btn:hover { background: #f5f5f5; }
+
+  .result-section { max-width: 980px; margin: 0 auto 2rem; padding: 0 1.5rem; display: none; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .result-header h2 { font-size: 15px; font-weight: 600; }
+  .dl-btn { padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; background: #111; color: #fff; cursor: pointer; }
+  .dl-btn:hover { background: #333; }
+  .dl-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .preview-thumb { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
+  .preview-thumb img { width: 100%; display: block; }
+  .preview-thumb-label { font-size: 11px; color: #888; padding: 5px 8px; background: #fafafa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-top: 1px solid #f0f0f0; }
+
+  .progress-bar-wrap { margin-top: 1rem; display: none; }
+  .progress-bar-bg { background: #eee; border-radius: 999px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: #111; border-radius: 999px; transition: width 0.2s; width: 0%; }
+  .progress-msg { font-size: 13px; color: #888; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎟 쿠폰 이미지 생성기</h1>
+  <span>바코드 자동 생성 · ZIP 일괄 다운로드</span>
+</header>
+
+<div class="container">
+  <!-- 왼쪽: 입력 폼 -->
+  <div>
+    <div class="card">
+      <div class="card-title">쿠폰 정보</div>
+
+      <div class="field">
+        <label>로고 이미지 <span style="color:#bbb;font-weight:400;">(기본 Paul Bassett, 변경 시 업로드)</span></label>
+        <div class="upload-box" id="logo-box">
+          <input type="file" accept="image/*" id="logo-file" onchange="handleLogo(event)">
+          <div class="icon">🖼</div>
+          <img id="logo-preview" src="" style="display:none;">
+          <div id="logo-text">클릭하여 로고 파일 선택</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>쿠폰 제목</label>
+        <input type="text" id="coupon-title" placeholder="예: THANK YOU COUPON" value="THANK YOU COUPON">
+      </div>
+
+      <div class="field">
+        <label>쿠폰 메인 이미지</label>
+        <div class="upload-box" id="main-img-box">
+          <input type="file" accept="image/*" id="main-img-file" onchange="handleMainImg(event)">
+          <div class="icon" id="main-img-icon">📷</div>
+          <img id="main-img-preview" src="" style="display:none; max-height:80px;">
+          <div id="main-img-text">클릭하여 이미지 파일 선택</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>쿠폰 이름</label>
+        <input type="text" id="coupon-name" placeholder="예: 룽고(S) 쿠폰" value="룽고(S) 쿠폰">
+      </div>
+
+      <div class="field">
+        <label>사용기한</label>
+        <input type="text" id="expiry" placeholder="예: 사용기한: 2025.09.30" value="사용기한: 2025.09.30">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">난수번호 입력</div>
+      <div class="field">
+        <label>한 줄에 하나씩 입력 (여러 장 동시 생성 가능)</label>
+        <textarea class="codes-area" id="codes-text" placeholder="LSM2502432631281&#10;LSM2502432631282&#10;LSM2502432631283" oninput="updateCodeCount()"></textarea>
+        <div class="code-count" id="code-count">0개 입력됨</div>
+      </div>
+      <div class="or-sep">또는 파일 업로드</div>
+      <div class="field">
+        <div class="upload-box">
+          <input type="file" accept=".csv,.txt" id="csv-file" onchange="handleCSV(event)">
+          <div>📄 CSV / TXT 파일 선택 (줄바꿈 또는 쉼표로 구분)</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="gen-btn" onclick="generate()">쿠폰 이미지 생성하기</button>
+
+    <div class="progress-bar-wrap" id="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      <div class="progress-msg" id="progress-msg"></div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 미리보기 -->
+  <div class="sticky-right">
+    <div class="card">
+      <div class="card-title">실시간 미리보기</div>
+      <div class="preview-canvas-wrap">
+        <canvas id="preview-canvas" width="250" height="411"></canvas>
+      </div>
+      <button class="refresh-btn" onclick="updatePreview()">↺ 미리보기 새로고침</button>
+    </div>
+  </div>
+</div>
+
+<!-- 결과 -->
+<div class="result-section" id="result-section">
+  <div class="result-header">
+    <h2>생성된 쿠폰 <span id="result-count" style="color:#888;font-weight:400;"></span></h2>
+    <button class="dl-btn" id="dl-btn" onclick="downloadZIP()">⬇ ZIP 다운로드</button>
+  </div>
+  <div class="preview-grid" id="preview-grid"></div>
+</div>
+
+<canvas id="work-canvas" width="500" height="823" style="display:none;"></canvas>
+
+<script>
+const PB_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80"><text x="10" y="58" font-family="Georgia,serif" font-style="italic" font-size="52" fill="#1a1a1a" letter-spacing="-1">Paul Bassett</text><line x1="10" y1="68" x2="285" y2="68" stroke="#1a1a1a" stroke-width="1.5"/></svg>`;
+
+let logoImg = null;
+let mainImg = null;
+let generatedBlobs = [];
+let generatedNames = [];
+
+function svgToImg(svgStr, w, h) {
+  return new Promise(res => {
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.src = url;
+  });
+}
+
+function loadImgFromFile(file) {
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handleLogo(e) {
+  const f = e.target.files[0]; if (!f) return;
+  loadImgFromFile(f).then(img => {
+    logoImg = img;
+    const prev = document.getElementById('logo-preview');
+    prev.src = img.src; prev.style.display = 'block';
+    document.getElementById('logo-text').style.display = 'none';
+    document.querySelector('#logo-box .icon').style.display = 'none';
+    updatePreview();
+  });
+}
+
+function handleMainImg(e) {
+  const f = e.target.files[0]; if (!f) return;
+  loadImgFromFile(f).then(img => {
+    mainImg = img;
+    const prev = document.getElementById('main-img-preview');
+    prev.src = img.src; prev.style.display = 'block';
+    document.getElementById('main-img-text').style.display = 'none';
+    document.getElementById('main-img-icon').style.display = 'none';
+    updatePreview();
+  });
+}
+
+function handleCSV(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const codes = ev.target.result.split(/[\r\n,]+/).map(s => s.trim()).filter(s => s);
+    const existing = document.getElementById('codes-text').value.trim();
+    document.getElementById('codes-text').value = existing ? existing + '\n' + codes.join('\n') : codes.join('\n');
+    updateCodeCount();
+  };
+  reader.readAsText(f);
+}
+
+function updateCodeCount() {
+  const codes = getCodes();
+  document.getElementById('code-count').textContent = codes.length + '개 입력됨';
+}
+
+function getCodes() {
+  return document.getElementById('codes-text').value.split(/[\r\n]+/).map(s => s.trim()).filter(s => s);
+}
+
+function makeBarcodeDataURL(code) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  try {
+    JsBarcode(svg, code, {
+      format: 'CODE128', width: 2.4, height: 68,
+      displayValue: true, fontSize: 14, margin: 6,
+      lineColor: '#000', background: '#ffffff',
+      font: 'monospace'
+    });
+    const s = new XMLSerializer().serializeToString(svg);
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(s)));
+  } catch (err) { return null; }
+}
+
+async function drawCoupon(canvas, code) {
+  const ctx = canvas.getContext('2d');
+  const W = 500, H = 823;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const title = document.getElementById('coupon-title').value || 'THANK YOU COUPON';
+  const couponName = document.getElementById('coupon-name').value || '쿠폰';
+  const expiry = document.getElementById('expiry').value || '';
+
+  // 로고
+  const logoI = logoImg || await svgToImg(PB_LOGO_SVG, 300, 80);
+  const logoMaxW = 220, logoMaxH = 66;
+  const logoRatio = logoI.naturalWidth / logoI.naturalHeight || logoI.width / logoI.height || 4;
+  let lw = logoMaxW, lh = lw / logoRatio;
+  if (lh > logoMaxH) { lh = logoMaxH; lw = lh * logoRatio; }
+  ctx.drawImage(logoI, (W - lw) / 2, 26, lw, lh);
+
+  // 제목
+  ctx.fillStyle = '#111';
+  ctx.font = '600 18px "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(title, W / 2, 122);
+  ctx.letterSpacing = '0px';
+
+  // 구분선
+  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(30, 138); ctx.lineTo(W - 30, 138); ctx.stroke();
+
+  // 메인 이미지
+  const imgY = 148, imgH = 338;
+  if (mainImg) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, imgY, W, imgH); ctx.clip();
+    const ratio = mainImg.naturalWidth / mainImg.naturalHeight;
+    let dw, dh;
+    if (ratio > W / imgH) { dh = imgH; dw = dh * ratio; }
+    else { dw = W; dh = dw / ratio; }
+    ctx.drawImage(mainImg, (W - dw) / 2, imgY + (imgH - dh) / 2, dw, dh);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#f2f2f2'; ctx.fillRect(0, imgY, W, imgH);
+    ctx.fillStyle = '#bbb'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('이미지를 업로드해주세요', W / 2, imgY + imgH / 2);
+  }
+
+  // 구분선
+  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(30, 498); ctx.lineTo(W - 30, 498); ctx.stroke();
+
+  // 쿠폰 이름
+  ctx.fillStyle = '#111';
+  ctx.font = '500 19px "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(couponName, W / 2, 538);
+
+  // 바코드
+  if (code) {
+    const bcURL = makeBarcodeDataURL(code);
+    if (bcURL) {
+      await new Promise(res => {
+        const bcImg = new Image();
+        bcImg.onload = () => {
+          const bcW = 350, bcH = 95;
+          ctx.drawImage(bcImg, (W - bcW) / 2, 558, bcW, bcH);
+          res();
+        };
+        bcImg.onerror = res;
+        bcImg.src = bcURL;
+      });
+    }
+  }
+
+  // 사용기한
+  if (expiry) {
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+    const exW = 280, exH = 36, exX = (W - exW) / 2, exY = 756;
+    roundRect(ctx, exX, exY, exW, exH, 6); ctx.stroke();
+    ctx.fillStyle = '#444';
+    ctx.font = '14px "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(expiry, W / 2, exY + 23);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+async function updatePreview() {
+  const work = document.getElementById('work-canvas');
+  const preview = document.getElementById('preview-canvas');
+  work.width = 500; work.height = 823;
+  preview.width = 250; preview.height = 411;
+  const codes = getCodes();
+  await drawCoupon(work, codes[0] || 'LSM0000000000000');
+  preview.getContext('2d').drawImage(work, 0, 0, 250, 411);
+}
+
+async function generate() {
+  const codes = getCodes();
+  if (!codes.length) { alert('난수번호를 최소 1개 이상 입력해주세요.'); return; }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = '생성 중...';
+  generatedBlobs = []; generatedNames = [];
+
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('result-count').textContent = codes.length + '장';
+
+  const pw = document.getElementById('progress-wrap');
+  pw.style.display = 'block';
+  const fill = document.getElementById('progress-fill');
+  const msg = document.getElementById('progress-msg');
+
+  const work = document.getElementById('work-canvas');
+  work.width = 500; work.height = 823;
+
+  for (let i = 0; i < codes.length; i++) {
+    const code = codes[i];
+    await drawCoupon(work, code);
+
+    const blob = await new Promise(res => work.toBlob(res, 'image/jpeg', 0.82));
+    const name = 'coupon_' + code + '.jpg';
+    generatedBlobs.push(blob);
+    generatedNames.push(name);
+
+    const url = URL.createObjectURL(blob);
+    const div = document.createElement('div');
+    div.className = 'preview-thumb';
+    div.innerHTML = '<img src="' + url + '"><div class="preview-thumb-label">' + code + '</div>';
+    grid.appendChild(div);
+
+    const pct = Math.round((i + 1) / codes.length * 100);
+    fill.style.width = pct + '%';
+    msg.textContent = (i + 1) + ' / ' + codes.length + ' 완료';
+    await new Promise(r => setTimeout(r, 8));
+  }
+
+  btn.disabled = false; btn.textContent = '쿠폰 이미지 생성하기';
+  msg.textContent = '✓ ' + codes.length + '장 생성 완료! 아래에서 다운로드하세요.';
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function downloadZIP() {
+  if (!generatedBlobs.length) { alert('먼저 쿠폰을 생성해주세요.'); return; }
+  const btn = document.getElementById('dl-btn');
+  btn.disabled = true; btn.textContent = 'ZIP 압축 중...';
+  const zip = new JSZip();
+  for (let i = 0; i < generatedBlobs.length; i++) zip.file(generatedNames[i], generatedBlobs[i]);
+  const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(content);
+  a.download = 'coupons.zip';
+  a.click();
+  btn.disabled = false; btn.textContent = '⬇ ZIP 다운로드';
+}
+
+// 입력값 변경 시 자동 미리보기
+['coupon-title', 'coupon-name', 'expiry'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => updatePreview());
+});
+
+window.addEventListener('load', updatePreview);
+</script>
+</body>
+</html>
