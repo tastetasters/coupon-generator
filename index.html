@@ -169,7 +169,8 @@ let mainImg = null;
 let generatedBlobs = [];
 let generatedNames = [];
 
-// 레이아웃 상수 (가로 500 고정)
+// 레이아웃 상수 (가로 500 고정, 실제 캔버스는 2배 해상도로 렌더링)
+const DPR = 2;   // 2배 해상도 → 화질 선명, 용량은 JPEG 압축으로 제어
 const CW = 500;
 const LOGO_TOP = 24;
 const LOGO_H = 70;
@@ -272,9 +273,12 @@ function drawCoverImage(ctx, img, x, y, w, h) {
 
 async function drawCoupon(canvas, code) {
   const L = calcLayout();
-  canvas.width = CW;
-  canvas.height = L.totalH;
+  canvas.width = CW * DPR;
+  canvas.height = L.totalH * DPR;
+  canvas.style.width = CW + 'px';
+  canvas.style.height = L.totalH + 'px';
   const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, CW, L.totalH);
 
@@ -361,8 +365,10 @@ async function updatePreview() {
   const work = document.getElementById('work-canvas');
   const preview = document.getElementById('preview-canvas');
   await drawCoupon(work, getCodes()[0] || 'LSM0000000000000');
-  preview.width = Math.round(work.width * 0.5);
-  preview.height = Math.round(work.height * 0.5);
+  // work는 DPR 2배 해상도이므로, 미리보기는 절반 크기로 표시
+  const L = calcLayout();
+  preview.width = Math.round(CW * 0.5);
+  preview.height = Math.round(L.totalH * 0.5);
   preview.getContext('2d').drawImage(work, 0, 0, preview.width, preview.height);
 }
 
@@ -382,7 +388,7 @@ async function generate() {
 
   for (let i = 0; i < codes.length; i++) {
     await drawCoupon(work, codes[i]);
-    const blob = await new Promise(res => work.toBlob(res, 'image/jpeg', 0.85));
+    const blob = await new Promise(res => work.toBlob(res, 'image/jpeg', 0.92));
     const name = 'coupon_' + codes[i] + '.jpg';
     generatedBlobs.push(blob); generatedNames.push(name);
     const url = URL.createObjectURL(blob);
