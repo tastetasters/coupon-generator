@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TasteTasters 툴킷</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f3; color: #111; min-height: 100vh; display: flex; flex-direction: column; }
+
+header { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 1.2rem 2rem; display: flex; align-items: center; gap: 12px; }
+header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+header span { font-size: 13px; color: #888; }
+
+.hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 1.5rem; }
+.hero-label { font-size: 12px; font-weight: 600; color: #aaa; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+.hero-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; text-align: center; margin-bottom: 0.5rem; }
+.hero-sub { font-size: 15px; color: #888; text-align: center; margin-bottom: 3rem; }
+
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; width: 100%; max-width: 640px; }
+@media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+.menu-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 2rem 1.75rem; cursor: pointer; text-decoration: none; color: #111; transition: all 0.18s; display: flex; flex-direction: column; gap: 10px; }
+.menu-card:hover { border-color: #bbb; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.07); }
+.menu-card:active { transform: translateY(0); }
+
+.menu-icon { font-size: 32px; margin-bottom: 4px; }
+.menu-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.menu-desc { font-size: 13px; color: #888; line-height: 1.6; }
+.menu-arrow { font-size: 13px; color: #bbb; margin-top: auto; padding-top: 12px; }
+
+footer { text-align: center; padding: 1.5rem; font-size: 12px; color: #ccc; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍽 TasteTasters</h1>
+  <span>마케팅 툴킷</span>
+</header>
+
+<div class="hero">
+  <div class="hero-label">Marketing Toolkit</div>
+  <div class="hero-title">어떤 작업을 할까요?</div>
+  <div class="hero-sub">원하는 도구를 선택해주세요</div>
+
+  <div class="cards">
+    <a class="menu-card" href="coupon.html">
+      <div class="menu-icon">🎟</div>
+      <div class="menu-name">쿠폰 이미지 생성기</div>
+      <div class="menu-desc">난수번호 입력 후 바코드 쿠폰 이미지를 일괄 생성하고 ZIP으로 다운로드</div>
+      <div class="menu-arrow">열기 →</div>
+    </a>
+    <a class="menu-card" href="schedule.html">
+      <div class="menu-icon">📅</div>
+      <div class="menu-name">바이럴 마케팅 일정 계산기</div>
+      <div class="menu-desc">출시일 입력 시 가이드 작성·인플루언서 선정 등 전체 일정을 자동 계산</div>
+      <div class="menu-arrow">열기 →</div>
+    </a>
+  </div>
+</div>
+
+<footer>TasteTasters © 2026</footer>
+
+</body>
+</html>
