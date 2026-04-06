@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바이럴 마케팅 일정 계산기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f3; color: #111; min-height: 100vh; }
+
+header { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 1rem 2rem; display: flex; align-items: center; gap: 12px; }
+.back-btn { font-size: 13px; color: #888; text-decoration: none; display: flex; align-items: center; gap: 4px; padding: 4px 10px 4px 6px; border-radius: 6px; transition: background 0.15s; }
+.back-btn:hover { background: #f5f5f5; color: #111; }
+.header-divider { width: 1px; height: 16px; background: #e8e8e8; }
+header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+header span { font-size: 13px; color: #888; }
+
+.container { max-width: 700px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+.card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem; }
+
+.field { margin-bottom: 1rem; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+.field input[type="text"], .field input[type="date"] {
+  font-size: 14px; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+  background: #fff; color: #111; outline: none; transition: border 0.15s;
+}
+.field input[type="text"] { width: 100%; }
+.field input[type="date"] { width: 220px; }
+.field input:focus { border-color: #999; }
+
+.gen-btn {
+  width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+  border: none; border-radius: 10px; background: #111; color: #fff;
+  cursor: pointer; transition: all 0.15s; letter-spacing: -0.2px;
+}
+.gen-btn:hover { background: #333; }
+
+.result-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; overflow: hidden; margin-bottom: 1.25rem; }
+.result-header { padding: 14px 20px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
+.result-proj { font-size: 15px; font-weight: 700; }
+.result-launch { font-size: 13px; color: #888; }
+
+.result-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f5f5f5; gap: 12px; }
+.result-row:last-child { border-bottom: none; }
+.result-row.col-header { background: #fafafa; padding: 8px 20px; }
+.col-label { font-size: 11px; color: #bbb; font-weight: 500; letter-spacing: 0.04em; }
+.task-name { font-size: 13px; color: #111; }
+.task-date { font-size: 13px; font-weight: 600; color: #111; }
+.task-date.holiday { color: #c0392b; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; white-space: nowrap; font-weight: 500; }
+.badge-pre  { background: #eeedfe; color: #534ab7; }
+.badge-day  { background: #fdecea; color: #c0392b; }
+.badge-post { background: #e1f5ee; color: #0f6e56; }
+.holiday-tag { font-size: 11px; color: #e67e22; background: #fef5e7; border-radius: 4px; padding: 2px 6px; margin-left: 6px; }
+
+.copy-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+.copy-label { font-size: 12px; color: #888; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+.copy-box { background: #f8f8f8; border: 1px solid #ececec; border-radius: 8px; padding: 14px 16px; font-size: 13px; font-family: 'Courier New', monospace; color: #444; line-height: 2; white-space: pre-wrap; }
+.copy-btn { margin-top: 12px; padding: 10px 20px; font-size: 13px; font-weight: 600; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; cursor: pointer; transition: all 0.15s; }
+.copy-btn:hover { background: #f5f5f5; }
+.copy-msg { font-size: 12px; color: #27ae60; margin-left: 10px; }
+
+.empty { text-align: center; padding: 3rem; color: #bbb; font-size: 14px; line-height: 1.8; }
+.notice { font-size: 12px; color: #aaa; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-btn" href="index.html">← 홈</a>
+  <div class="header-divider"></div>
+  <h1>📅 바이럴 마케팅 일정 계산기</h1>
+  <span>한국 공휴일 반영 · 워킹데이 기준</span>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">프로젝트 정보</div>
+    <div class="field">
+      <label>프로젝트명</label>
+      <input type="text" id="projName" placeholder="예: 샌드위치 신메뉴 출시">
+    </div>
+    <div class="field">
+      <label>출시일 (D-day)</label>
+      <input type="date" id="launchDate">
+    </div>
+    <button class="gen-btn" style="margin-top:0.5rem;" onclick="calculate()">일정 자동 계산하기</button>
+  </div>
+
+  <div id="resultArea"><div class="empty">출시일을 입력하고<br>일정 자동 계산하기를 눌러주세요</div></div>
+
+</div>
+
+<script>
+const HOLIDAYS = [
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
+  '2025-08-15','2025-10-03','2025-10-05','2025-10-06','2025-10-07',
+  '2025-10-09','2025-12-25',
+  '2026-01-01','2026-01-28','2026-01-29','2026-01-30',
+  '2026-03-01','2026-05-05','2026-05-25','2026-06-06',
+  '2026-08-15','2026-09-24','2026-09-25','2026-09-26',
+  '2026-10-03','2026-10-09','2026-12-25',
+  '2027-01-01','2027-02-08','2027-02-09','2027-02-10',
+  '2027-03-01','2027-05-05','2027-06-06','2027-08-15',
+  '2027-10-03','2027-10-09','2027-12-25'
+];
+
+function toStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function isHoliday(d) { return HOLIDAYS.includes(toStr(d)); }
+function isWeekend(d) { const day = d.getDay(); return day === 0 || day === 6; }
+function isWorkday(d) { return !isWeekend(d) && !isHoliday(d); }
+
+function addWorkdays(base, n) {
+  let d = new Date(base);
+  let count = 0;
+  const dir = n > 0 ? 1 : -1;
+  const abs = Math.abs(n);
+  while (count < abs) {
+    d.setDate(d.getDate() + dir);
+    if (isWorkday(d)) count++;
+  }
+  return d;
+}
+
+function formatDate(d) {
+  const days = ['일','월','화','수','목','금','토'];
+  return d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일 (' + days[d.getDay()] + ')';
+}
+
+function formatDateShort(d) {
+  return (d.getMonth()+1) + '/' + d.getDate();
+}
+
+const TASKS = [
+  { label: '가이드 작성 / 모집요청', offset: -10, type: 'pre', tag: 'D-10' },
+  { label: '인플루언서 최종 선정',   offset: -7,  type: 'pre', tag: 'D-7'  },
+  { label: '매장공지 / 상품권 전달', offset: -5,  type: 'pre', tag: 'D-5'  },
+  { label: '출시일',                 offset: 0,   type: 'day', tag: 'D-day'},
+  { label: '콘텐츠 업로드 마감',     offset: 7,   type: 'post', tag: 'D+7' },
+  { label: '검수 완료',              offset: 10,  type: 'post', tag: 'D+10'},
+  { label: '결과보고서 확인',        offset: 14,  type: 'post', tag: 'D+14'},
+];
+
+function calculate() {
+  const dateVal = document.getElementById('launchDate').value;
+  const projName = document.getElementById('projName').value.trim() || '새 프로젝트';
+
+  if (!dateVal) { alert('출시일을 선택해주세요!'); return; }
+
+  const launch = new Date(dateVal + 'T00:00:00');
+  if (!isWorkday(launch)) {
+    alert('출시일이 주말이거나 공휴일이에요!\n워킹데이(월~금, 공휴일 제외)로 다시 선택해주세요.');
+    return;
+  }
+
+  const results = TASKS.map(t => {
+    const d = t.offset === 0 ? new Date(launch) : addWorkdays(launch, t.offset);
+    return { ...t, date: d, isHol: isHoliday(d) };
+  });
+
+  const badgeClass = { pre: 'badge-pre', day: 'badge-day', post: 'badge-post' };
+
+  let rows = results.map(r => `
+    <div class="result-row">
+      <span class="task-name">${r.label}</span>
+      <span class="task-date${r.isHol ? ' holiday' : ''}">${formatDate(r.date)}${r.isHol ? '<span class="holiday-tag">공휴일 확인</span>' : ''}</span>
+      <span class="badge ${badgeClass[r.type]}">${r.tag}</span>
+    </div>`).join('');
+
+  const copyLines = results.map(r => r.label + ': ' + formatDate(r.date)).join('\n');
+
+  document.getElementById('resultArea').innerHTML = `
+    <div class="result-card">
+      <div class="result-header">
+        <span class="result-proj">${projName}</span>
+        <span class="result-launch">출시일 · ${formatDate(launch)}</span>
+      </div>
+      <div class="result-row col-header">
+        <span class="col-label">업무</span>
+        <span class="col-label">날짜</span>
+        <span class="col-label">기준</span>
+      </div>
+      ${rows}
+    </div>
+    <div class="copy-card">
+      <div class="copy-label">노션 입력용 텍스트</div>
+      <div class="copy-box" id="copyBox">${copyLines}</div>
+      <div style="display:flex;align-items:center;margin-top:12px;">
+        <button class="copy-btn" onclick="doCopy()">텍스트 복사하기</button>
+        <span class="copy-msg" id="copyMsg"></span>
+      </div>
+      <div class="notice">이 텍스트를 보면서 노션 각 날짜 칸에 직접 입력하시면 돼요</div>
+    </div>`;
+}
+
+function doCopy() {
+  const text = document.getElementById('copyBox').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.textContent = '✓ 복사됐어요!';
+    setTimeout(() => msg.textContent = '', 2500);
+  });
+}
+</script>
+</body>
+</html>
