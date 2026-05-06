@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿠폰 이미지 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f3; color: #111; min-height: 100vh; }
+
+  header { background: #fff; border-bottom: 1px solid #e8e8e8; padding: 1rem 2rem; display: flex; align-items: center; gap: 12px; }
+  .back-btn { font-size: 13px; color: #888; text-decoration: none; display: flex; align-items: center; gap: 4px; padding: 4px 10px 4px 6px; border-radius: 6px; transition: background 0.15s; }
+  .back-btn:hover { background: #f5f5f5; color: #111; }
+  .header-divider { width: 1px; height: 16px; background: #e8e8e8; }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  header span { font-size: 13px; color: #888; }
+
+  .container { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; }
+  @media (max-width: 750px) { .container { grid-template-columns: 1fr; } }
+
+  .card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.5rem; }
+  .card + .card { margin-top: 1rem; }
+  .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem; }
+
+  .field { margin-bottom: 1.1rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+  .field input[type="text"] { width: 100%; font-size: 14px; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; outline: none; transition: border 0.15s; }
+  .field input[type="text"]:focus { border-color: #999; }
+
+  .upload-box { border: 1.5px dashed #d8d8d8; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: #999; position: relative; transition: all 0.15s; background: #fafafa; }
+  .upload-box:hover { border-color: #aaa; background: #f5f5f5; }
+  .upload-box input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-box img { max-height: 60px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .upload-box .icon { font-size: 22px; margin-bottom: 4px; }
+
+  .codes-area { width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; height: 130px; resize: vertical; font-family: 'Courier New', monospace; outline: none; line-height: 1.7; }
+  .codes-area:focus { border-color: #999; }
+
+  .or-sep { text-align: center; font-size: 12px; color: #bbb; margin: 10px 0; position: relative; }
+  .or-sep::before, .or-sep::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: #eee; }
+  .or-sep::before { left: 0; } .or-sep::after { right: 0; }
+
+  .code-count { font-size: 12px; color: #888; margin-top: 6px; }
+
+  .gen-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border: none; border-radius: 10px; background: #111; color: #fff; cursor: pointer; margin-top: 1.25rem; transition: all 0.15s; letter-spacing: -0.2px; }
+  .gen-btn:hover { background: #333; }
+  .gen-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .sticky-right { position: sticky; top: 1.5rem; }
+  .preview-canvas-wrap { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
+  .preview-canvas-wrap canvas { width: 100%; display: block; }
+  .refresh-btn { width: 100%; margin-top: 10px; padding: 9px; font-size: 13px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #555; cursor: pointer; }
+  .refresh-btn:hover { background: #f5f5f5; }
+
+  .result-section { max-width: 980px; margin: 0 auto 2rem; padding: 0 1.5rem; display: none; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .result-header h2 { font-size: 15px; font-weight: 600; }
+  .dl-btn { padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; background: #111; color: #fff; cursor: pointer; }
+  .dl-btn:hover { background: #333; }
+  .dl-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .preview-thumb { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; }
+  .preview-thumb img { width: 100%; display: block; }
+  .preview-thumb-label { font-size: 11px; color: #888; padding: 5px 8px; background: #fafafa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-top: 1px solid #f0f0f0; }
+
+  .progress-bar-wrap { margin-top: 1rem; display: none; }
+  .progress-bar-bg { background: #eee; border-radius: 999px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: #111; border-radius: 999px; transition: width 0.2s; width: 0%; }
+  .progress-msg { font-size: 13px; color: #888; margin-top: 8px; text-align: center; }
+
+  /* 쿠폰 유의사항 섹션 */
+  .notes-section { max-width: 980px; margin: 0 auto 2.5rem; padding: 0 1.5rem; }
+  .notes-section .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem; }
+  .notes-heading { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 0.75rem; }
+  .notes-heading-input { width: 100%; font-size: 14px; font-weight: 600; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; color: #111; outline: none; transition: border 0.15s; margin-bottom: 0.75rem; }
+  .notes-heading-input:focus { border-color: #999; }
+  .notes-list { list-style: none; padding: 0; margin: 0; }
+  .notes-list li { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .notes-list li::before { content: '-'; color: #888; flex-shrink: 0; margin-top: 9px; font-size: 13px; }
+  .notes-item-input { flex: 1; font-size: 13px; padding: 8px 10px; border: 1px solid #e8e8e8; border-radius: 7px; background: #fafafa; color: #333; outline: none; resize: none; font-family: inherit; line-height: 1.6; transition: border 0.15s, background 0.15s; }
+  .notes-item-input:focus { border-color: #999; background: #fff; }
+  .notes-item-del { flex-shrink: 0; margin-top: 7px; width: 26px; height: 26px; border: none; background: none; color: #ccc; font-size: 16px; cursor: pointer; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: color 0.15s, background 0.15s; }
+  .notes-item-del:hover { color: #e55; background: #fff0f0; }
+  .notes-add-btn { margin-top: 10px; width: 100%; padding: 9px; font-size: 13px; border: 1.5px dashed #d8d8d8; border-radius: 8px; background: #fafafa; color: #888; cursor: pointer; transition: all 0.15s; }
+  .notes-add-btn:hover { border-color: #aaa; color: #555; background: #f5f5f5; }
+  .notes-tip { font-size: 11.5px; color: #bbb; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-btn" href="index.html">← 홈</a>
+  <div class="header-divider"></div>
+  <h1>🎟 쿠폰 이미지 생성기</h1>
+  <span>바코드 자동 생성 · ZIP 일괄 다운로드</span>
+</header>
+
+<div class="container">
+  <div>
+    <div class="card">
+      <div class="card-title">쿠폰 정보</div>
+
+      <div class="field">
+        <label>로고 이미지</label>
+        <div class="upload-box" id="logo-box">
+          <input type="file" accept="image/*" id="logo-file" onchange="handleLogo(event)">
+          <div class="icon" id="logo-icon">🖼</div>
+          <img id="logo-preview" src="" style="display:none;">
+          <div id="logo-text">클릭하여 로고 파일 선택</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>쿠폰 제목</label>
+        <input type="text" id="coupon-title" placeholder="예: THANK YOU COUPON" value="THANK YOU COUPON">
+      </div>
+
+      <div class="field">
+        <label>쿠폰 메인 이미지</label>
+        <div class="upload-box" id="main-img-box">
+          <input type="file" accept="image/*" id="main-img-file" onchange="handleMainImg(event)">
+          <div class="icon" id="main-img-icon">📷</div>
+          <img id="main-img-preview" src="" style="display:none; max-height:80px;">
+          <div id="main-img-text">클릭하여 이미지 파일 선택</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>쿠폰 이름</label>
+        <input type="text" id="coupon-name" placeholder="예: 룽고(S) 쿠폰" value="룽고(S) 쿠폰">
+      </div>
+
+      <div class="field">
+        <label>사용기한</label>
+        <input type="text" id="expiry" placeholder="예: 사용기한: 2025.09.30" value="사용기한: 2025.09.30">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">난수번호 입력</div>
+      <div class="field">
+        <label>한 줄에 하나씩 입력 (여러 장 동시 생성 가능)</label>
+        <textarea class="codes-area" id="codes-text" placeholder="LSM2502432631281&#10;LSM2502432631282&#10;LSM2502432631283" oninput="updateCodeCount()"></textarea>
+        <div class="code-count" id="code-count">0개 입력됨</div>
+      </div>
+      <div class="or-sep">또는 파일 업로드</div>
+      <div class="field">
+        <div class="upload-box">
+          <input type="file" accept=".csv,.txt" id="csv-file" onchange="handleCSV(event)">
+          <div>📄 CSV / TXT 파일 선택 (줄바꿈 또는 쉼표로 구분)</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="gen-btn" onclick="generate()">쿠폰 이미지 생성하기</button>
+
+    <div class="progress-bar-wrap" id="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      <div class="progress-msg" id="progress-msg"></div>
+    </div>
+  </div>
+
+  <div class="sticky-right">
+    <div class="card">
+      <div class="card-title">실시간 미리보기</div>
+      <div class="preview-canvas-wrap">
+        <canvas id="preview-canvas"></canvas>
+      </div>
+      <button class="refresh-btn" onclick="updatePreview()">↺ 미리보기 새로고침</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-section" id="result-section">
+  <div class="result-header">
+    <h2>생성된 쿠폰 <span id="result-count" style="color:#888;font-weight:400;"></span></h2>
+    <div style="display:flex;gap:8px;">
+      <button class="dl-btn" id="dl-btn-each" onclick="downloadEach()" style="background:#fff;color:#111;border:1px solid #ccc;">⬇ 개별 저장</button>
+      <button class="dl-btn" id="dl-btn" onclick="downloadZIP()">⬇ ZIP 다운로드</button>
+    </div>
+  </div>
+  <div class="preview-grid" id="preview-grid"></div>
+</div>
+
+<!-- 쿠폰 유의사항 섹션 -->
+<div class="notes-section">
+  <div class="card">
+    <div class="card-title">쿠폰 유의사항</div>
+    <input class="notes-heading-input" id="notes-heading" type="text" value="쿠폰사용 유의사항" placeholder="소제목 입력">
+    <ul class="notes-list" id="notes-list"></ul>
+    <button class="notes-add-btn" onclick="addNoteItem()">+ 항목 추가</button>
+    <div class="notes-tip">※ 각 항목을 직접 수정하거나 삭제할 수 있습니다.</div>
+  </div>
+</div>
+
+<canvas id="work-canvas" style="display:none;"></canvas>
+
+<script>
+let logoImg = null;
+let mainImg = null;
+let generatedBlobs = [];
+let generatedNames = [];
+
+const CW = 600;
+const LOGO_TOP = 28;
+const LOGO_H = 84;
+const TITLE_OFFSET = 34;
+const DIV_GAP = 15;
+const IMG_H = 384;
+const NAME_OFFSET = 56;
+const BC_GAP = 12;
+const BC_H = 100;
+const EXPIRY_GAP = 12;
+const EXPIRY_H = 40;
+const BOTTOM_PAD = 32;
+
+function getNoteItems() {
+  const heading = document.getElementById('notes-heading').value.trim();
+  const items = Array.from(document.querySelectorAll('#notes-list .notes-item-input'))
+    .map(el => el.value.trim()).filter(t => t);
+  return { heading, items };
+}
+
+function calcNotesHeight(ctx, notes) {
+  if (!notes.items.length && !notes.heading) return 0;
+  const PAD = 28;
+  const FONT_HEADING = 14;
+  const FONT_ITEM = 12.5;
+  const LINE_H = 19;
+  const MAX_W = CW - 72 - 16; // 36px padding each side, 16px bullet
+  let h = PAD + FONT_HEADING + 14; // heading
+  ctx.font = `${FONT_ITEM}px "Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+  notes.items.forEach(item => {
+    const lines = wrapText(ctx, '- ' + item, MAX_W);
+    h += lines.length * LINE_H + 5;
+  });
+  h += PAD;
+  return h;
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split('');
+  let line = '', lines = [];
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i];
+    if (ctx.measureText(test).width > maxWidth && line.length > 0) {
+      lines.push(line); line = words[i];
+    } else { line = test; }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function calcLayout() {
+  const titleY = LOGO_TOP + LOGO_H + TITLE_OFFSET;
+  const div1Y   = titleY + DIV_GAP;
+  const imgY    = div1Y + 1 + DIV_GAP;
+  const div2Y   = imgY + IMG_H + DIV_GAP;
+  const nameY   = div2Y + 1 + NAME_OFFSET;
+  const bcY     = nameY + BC_GAP;
+  const expiryY = bcY + BC_H + EXPIRY_GAP;
+  const notesY  = expiryY + EXPIRY_H + 24;
+  const totalH  = notesY; // will be extended after notes height is known
+  return { titleY, div1Y, imgY, div2Y, nameY, bcY, expiryY, notesY, totalH };
+}
+
+function loadImgFromFile(file) {
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => { const img = new Image(); img.onload = () => res(img); img.src = e.target.result; };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handleLogo(e) {
+  const f = e.target.files[0]; if (!f) return;
+  loadImgFromFile(f).then(img => {
+    logoImg = img;
+    const prev = document.getElementById('logo-preview');
+    prev.src = img.src; prev.style.display = 'block';
+    document.getElementById('logo-text').style.display = 'none';
+    document.getElementById('logo-icon').style.display = 'none';
+    updatePreview();
+  });
+}
+
+function handleMainImg(e) {
+  const f = e.target.files[0]; if (!f) return;
+  loadImgFromFile(f).then(img => {
+    mainImg = img;
+    const prev = document.getElementById('main-img-preview');
+    prev.src = img.src; prev.style.display = 'block';
+    document.getElementById('main-img-text').style.display = 'none';
+    document.getElementById('main-img-icon').style.display = 'none';
+    updatePreview();
+  });
+}
+
+function handleCSV(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const codes = ev.target.result.split(/[\r\n,]+/).map(s => s.trim()).filter(s => s);
+    const existing = document.getElementById('codes-text').value.trim();
+    document.getElementById('codes-text').value = existing ? existing + '\n' + codes.join('\n') : codes.join('\n');
+    updateCodeCount();
+  };
+  reader.readAsText(f);
+}
+
+function updateCodeCount() {
+  document.getElementById('code-count').textContent = getCodes().length + '개 입력됨';
+}
+
+function getCodes() {
+  return document.getElementById('codes-text').value.split(/[\r\n]+/).map(s => s.trim()).filter(s => s);
+}
+
+function makeBarcodeDataURL(code) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  try {
+    JsBarcode(svg, code, {
+      format: 'CODE128', width: 3.0, height: 75,
+      displayValue: true, fontSize: 18, margin: 7,
+      lineColor: '#000', background: '#ffffff', font: 'monospace'
+    });
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(svg))));
+  } catch (e) { return null; }
+}
+
+function drawCoverImage(ctx, img, x, y, w, h) {
+  const imgR = img.naturalWidth / img.naturalHeight;
+  const boxR = w / h;
+  let dw, dh, dx, dy;
+  if (imgR > boxR) { dh = h; dw = dh * imgR; dx = x - (dw - w) / 2; dy = y; }
+  else             { dw = w; dh = dw / imgR; dx = x; dy = y - (dh - h) / 2; }
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+async function drawCoupon(canvas, code) {
+  const L = calcLayout();
+  const notes = getNoteItems();
+
+  // temp ctx to measure notes height
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = CW; tmpCanvas.height = 10;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  const notesH = calcNotesHeight(tmpCtx, notes);
+
+  canvas.width = CW;
+  canvas.height = L.notesY + notesH + BOTTOM_PAD;
+  canvas.style.width = '';
+  canvas.style.height = '';
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CW, canvas.height);
+
+  const title = document.getElementById('coupon-title').value || 'THANK YOU COUPON';
+  const couponName = document.getElementById('coupon-name').value || '쿠폰';
+  const expiry = document.getElementById('expiry').value || '';
+
+  if (logoImg) {
+    const maxW = 264, maxH = LOGO_H;
+    const r = logoImg.naturalWidth / logoImg.naturalHeight;
+    let lw = maxW, lh = lw / r;
+    if (lh > maxH) { lh = maxH; lw = lh * r; }
+    ctx.drawImage(logoImg, (CW - lw) / 2, LOGO_TOP + (LOGO_H - lh) / 2, lw, lh);
+  }
+
+  ctx.fillStyle = '#111';
+  ctx.font = '600 21px "Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(title, CW / 2, L.titleY);
+  ctx.letterSpacing = '0px';
+
+  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(36, L.div1Y); ctx.lineTo(CW - 36, L.div1Y); ctx.stroke();
+
+  if (mainImg) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, L.imgY, CW, IMG_H); ctx.clip();
+    drawCoverImage(ctx, mainImg, 0, L.imgY, CW, IMG_H);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#f2f2f2'; ctx.fillRect(0, L.imgY, CW, IMG_H);
+    ctx.fillStyle = '#bbb'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('이미지를 업로드해주세요', CW / 2, L.imgY + IMG_H / 2);
+  }
+
+  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(36, L.div2Y); ctx.lineTo(CW - 36, L.div2Y); ctx.stroke();
+
+  ctx.fillStyle = '#111';
+  ctx.font = '500 22px "Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(couponName, CW / 2, L.nameY);
+
+  if (code) {
+    const bcURL = makeBarcodeDataURL(code);
+    if (bcURL) {
+      await new Promise(res => {
+        const bi = new Image();
+        bi.onload = () => { ctx.drawImage(bi, (CW - 408) / 2, L.bcY, 408, BC_H); res(); };
+        bi.onerror = res; bi.src = bcURL;
+      });
+    }
+  }
+
+  if (expiry) {
+    const exW = 336, exH = EXPIRY_H, exX = (CW - exW) / 2, exY = L.expiryY;
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+    roundRect(ctx, exX, exY, exW, exH, 7); ctx.stroke();
+    ctx.fillStyle = '#444';
+    ctx.font = '16px "Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(expiry, CW / 2, exY + 26);
+  }
+
+  // ── 유의사항 ──
+  if (notes.items.length > 0 || notes.heading) {
+    const PAD_X = 36;
+    const MAX_W = CW - PAD_X * 2;
+    const FONT_ITEM = 12.5;
+    const LINE_H = 19;
+    let ny = L.notesY;
+
+    // 구분선
+    ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD_X, ny); ctx.lineTo(CW - PAD_X, ny); ctx.stroke();
+    ny += 20;
+
+    // 소제목
+    if (notes.heading) {
+      ctx.fillStyle = '#333';
+      ctx.font = `600 14px "Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText(notes.heading, PAD_X, ny);
+      ny += 20;
+    }
+
+    // 항목들
+    ctx.font = `${FONT_ITEM}px "Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+    ctx.fillStyle = '#777';
+    ctx.textAlign = 'left';
+    const INDENT = 8;
+    notes.items.forEach(item => {
+      const fullText = '- ' + item;
+      const lines = wrapText(ctx, fullText, MAX_W);
+      lines.forEach((line, li) => {
+        ctx.fillText(line, PAD_X + (li > 0 ? INDENT : 0), ny);
+        ny += LINE_H;
+      });
+      ny += 2;
+    });
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+async function updatePreview() {
+  const work = document.getElementById('work-canvas');
+  const preview = document.getElementById('preview-canvas');
+  await drawCoupon(work, getCodes()[0] || 'LSM0000000000000');
+  preview.width = Math.round(CW * 0.5);
+  preview.height = Math.round(work.height * 0.5);
+  preview.getContext('2d').drawImage(work, 0, 0, preview.width, preview.height);
+}
+
+async function generate() {
+  const codes = getCodes();
+  if (!codes.length) { alert('난수번호를 최소 1개 이상 입력해주세요.'); return; }
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = '생성 중...';
+  generatedBlobs = []; generatedNames = [];
+  document.getElementById('preview-grid').innerHTML = '';
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('result-count').textContent = codes.length + '장';
+  const pw = document.getElementById('progress-wrap'); pw.style.display = 'block';
+  const fill = document.getElementById('progress-fill');
+  const msg = document.getElementById('progress-msg');
+  const work = document.getElementById('work-canvas');
+
+  for (let i = 0; i < codes.length; i++) {
+    await drawCoupon(work, codes[i]);
+    const blob = await new Promise(res => work.toBlob(res, 'image/jpeg', 0.92));
+    const num = String(i + 1).padStart(2, '0');
+    const name = num + '. coupon_' + codes[i] + '.jpg';
+    generatedBlobs.push(blob); generatedNames.push(name);
+    const url = URL.createObjectURL(blob);
+    const div = document.createElement('div');
+    div.className = 'preview-thumb';
+    div.innerHTML = '<img src="' + url + '"><div class="preview-thumb-label">' + codes[i] + '</div>';
+    document.getElementById('preview-grid').appendChild(div);
+    fill.style.width = Math.round((i + 1) / codes.length * 100) + '%';
+    msg.textContent = (i + 1) + ' / ' + codes.length + ' 완료';
+    await new Promise(r => setTimeout(r, 8));
+  }
+  btn.disabled = false; btn.textContent = '쿠폰 이미지 생성하기';
+  msg.textContent = '✓ ' + codes.length + '장 생성 완료! 아래에서 다운로드하세요.';
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function downloadEach() {
+  if (!generatedBlobs.length) { alert('먼저 쿠폰을 생성해주세요.'); return; }
+  for (let i = 0; i < generatedBlobs.length; i++) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(generatedBlobs[i]);
+    a.download = generatedNames[i];
+    a.click();
+    await new Promise(r => setTimeout(r, 300));
+  }
+}
+
+async function downloadZIP() {
+  if (!generatedBlobs.length) { alert('먼저 쿠폰을 생성해주세요.'); return; }
+  const btn = document.getElementById('dl-btn');
+  btn.disabled = true; btn.textContent = 'ZIP 압축 중...';
+  const zip = new JSZip();
+  generatedBlobs.forEach((b, i) => zip.file(generatedNames[i], b));
+  const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = 'coupons.zip'; a.click();
+  btn.disabled = false; btn.textContent = '⬇ ZIP 다운로드';
+}
+
+['coupon-title', 'coupon-name', 'expiry', 'notes-heading'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updatePreview)
+);
+window.addEventListener('load', () => { updatePreview(); initNotes(); });
+
+/* ───── 유의사항 기능 ───── */
+const DEFAULT_NOTES = [
+  '본 쿠폰은 POS에서만 사용 가능합니다.(키오스크, APP 결제 불가)',
+  '본 쿠폰은 잔액이 이월되지 않으며, 한 번에 모든 잔액을 소진해야 합니다.',
+  '다른 메뉴로 변경 가능합니다.',
+  '본 쿠폰은 현금으로 환불되지 않으며, 잔액 환불되지 않습니다.',
+  '본 쿠폰은 사용 기간이 연장되지 않습니다.',
+  '사용 불가 매장: 여의도 현대카드점, 투고 바 롯데월드 어드벤처점, 삼성전자 평택점, 삼성 DSR점, 제주공항 국내선점, 고창 선운사점, 인천공항 T1 입국점, 인천공항 T2 입국점, 삼성전자 온양캠퍼스점, 송도 SK바이오사이언스점'
+];
+
+function initNotes() {
+  DEFAULT_NOTES.forEach(text => addNoteItem(text));
+}
+
+function addNoteItem(text = '') {
+  const list = document.getElementById('notes-list');
+  const li = document.createElement('li');
+  const textarea = document.createElement('textarea');
+  textarea.className = 'notes-item-input';
+  textarea.rows = 2;
+  textarea.value = text;
+  textarea.placeholder = '유의사항 항목 입력';
+  textarea.addEventListener('input', () => { autoResize(textarea); updatePreview(); });
+  const delBtn = document.createElement('button');
+  delBtn.className = 'notes-item-del';
+  delBtn.title = '삭제';
+  delBtn.innerHTML = '✕';
+  delBtn.onclick = () => { li.remove(); updatePreview(); };
+  li.appendChild(textarea);
+  li.appendChild(delBtn);
+  list.appendChild(li);
+  autoResize(textarea);
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+</script>
+</body>
+</html>
